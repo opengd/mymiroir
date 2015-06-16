@@ -1,0 +1,20 @@
+<Combine fileversion="2.0">
+  <Configurations active="Debug">
+    <Configuration name="Debug" ctype="CombineConfiguration">
+      <Entry build="True" name="mymiroir" configuration="Debug" />
+      <Entry build="True" name="mymiroir-cli" configuration="Debug" />
+    </Configuration>
+    <Configuration name="Release" ctype="CombineConfiguration">
+      <Entry build="True" name="mymiroir" configuration="Release" />
+      <Entry build="True" name="mymiroir-cli" configuration="Release" />
+    </Configuration>
+  </Configurations>
+  <StartMode startupentry="mymiroir" single="True">
+    <Execute type="None" entry="mymiroir" />
+    <Execute type="None" entry="mymiroir-cli" />
+  </StartMode>
+  <Entries>
+    <Entry filename="mymiroir\mymiroir.mdp" />
+    <Entry filename="mymiroir-cli\mymiroir-cli.mdp" />
+  </Entries>
+</Combine>

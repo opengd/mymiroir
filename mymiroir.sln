@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mymiroir", "mymiroir\mymiroir.csproj", "{B8C321CE-7CD5-463D-A4C8-F6B182F00EF4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mymiroir-cli", "mymiroir-cli\mymiroir-cli.csproj", "{90E7BDC7-0367-44E8-82A0-6631861B965B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{90E7BDC7-0367-44E8-82A0-6631861B965B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90E7BDC7-0367-44E8-82A0-6631861B965B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90E7BDC7-0367-44E8-82A0-6631861B965B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90E7BDC7-0367-44E8-82A0-6631861B965B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8C321CE-7CD5-463D-A4C8-F6B182F00EF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8C321CE-7CD5-463D-A4C8-F6B182F00EF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8C321CE-7CD5-463D-A4C8-F6B182F00EF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8C321CE-7CD5-463D-A4C8-F6B182F00EF4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = mymiroir\mymiroir.csproj
+	EndGlobalSection
+EndGlobal
