@@ -121,6 +121,11 @@ namespace mymiroir
 			set;
 		}
 
+		public bool Recursive {
+			get;
+			set;
+		}
+
 		private string _Filter = "*";
 
 		public string Filter
@@ -133,16 +138,14 @@ namespace mymiroir
 				_Filter = value;
 			}
 		}
-		
-		bool IsLinux
+
+		public bool IsUnixPlatform
 		{
 			get
 			{
-				return isLinux;
-			}
-			set
-			{
-				isLinux = value;
+				return (Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX)
+					? true
+					: false;
 			}
 		}
 
@@ -172,18 +175,6 @@ namespace mymiroir
 		private void init ()
 		{
 			filePool = new ArrayList();
-			
-			if(Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX) 
-			{
-				IsLinux = true;
-				Console.WriteLine ("FSW: Platform: " + "Linux");
-			}
-			else 
-			{
-				IsLinux = false;
-				Console.WriteLine ("FSW: Platform: " + "Windows");
-			}
-			
 				
 			fsw = new FileSystemWatcher();
 
@@ -192,12 +183,14 @@ namespace mymiroir
 				fsw.Path = WatchPath;
 			}
 			
-			Console.WriteLine ("FSW: WatchPath: " + WatchPath);
-			Console.WriteLine ("FSW: MirrorPath: " + MirrorPath);
+			//Console.WriteLine ("FSW: WatchPath: " + WatchPath);
+			//Console.WriteLine ("FSW: MirrorPath: " + MirrorPath);
 			
 			fsw.Filter = Filter;
 
 			fsw.NotifyFilter = NotifyFilters.LastWrite;
+
+			fsw.IncludeSubdirectories = (Recursive) ? true : false; 
 			
 			fsw.Error += new ErrorEventHandler(fsw_OnError);
 			
@@ -226,7 +219,6 @@ namespace mymiroir
 		{
 			Thread t = new Thread(OnNewFile);
 			t.Start(e);
-
 		}
 				
 		private void OnNewFile(object arguments)
@@ -274,7 +266,7 @@ namespace mymiroir
 
 				if(MirrorPath != null)
 				{
-					var pathEnd = (IsLinux) ? "/" : "\\";
+					var pathEnd = (IsUnixPlatform) ? "/" : "\\";
 
 					string ifhash = string.Empty;
 					string iftimestamp = string.Empty;
@@ -337,7 +329,7 @@ namespace mymiroir
 		
 		private bool IsFileReady(string inFile)
 		{
-			if(IsLinux) return true;
+			if(IsUnixPlatform) return true;
 			
 			while(true)
 			{
@@ -435,6 +427,21 @@ namespace mymiroir
 					time.Millisecond;
 		}
 
+		public string ToString ()
+		{
+			var ret = string.Empty;
+
+			ret += "System: " + Environment.OSVersion.Platform + "\n";
+			ret += "IsUnixPlatform: " + IsUnixPlatform + "\n";
+			ret += "Watch: " + WatchPath + "\n";
+			ret += "Mirror: " + MirrorPath + "\n";
+			ret += "Recursive: " + Recursive + "\n";
+			ret += "Compress: " + Compress + "\n";
+			ret += "Hash: " + AddHash + "\n";
+			ret += "Timestamp: " + AddTimestamp + "\n";
+
+			return ret;
+		}
 	}
 	
 }
