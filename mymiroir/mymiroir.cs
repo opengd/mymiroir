@@ -67,21 +67,14 @@ namespace mymiroir
 		private Uri uriMirrorPath;
 		private Uri uriWatchPath;
 
-		private bool isLinux;
-		
 		public string MirrorPath
 		{
 			get {
 				return (uriMirrorPath != null) ? uriMirrorPath.LocalPath : null;
 			}
-			set
-			{
+			set {
 				if(!string.IsNullOrEmpty(value))
-				{
-					string s = value;
-					s = s.TrimEnd(new char[]{'/', '\\'});
-					Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out uriMirrorPath);
-				}
+					Uri.TryCreate((value as string).TrimEnd(new char[]{'/', '\\'}), UriKind.RelativeOrAbsolute, out uriMirrorPath);
 			}
 		}
 		
@@ -90,14 +83,9 @@ namespace mymiroir
 			get {
 				return (uriWatchPath != null) ? uriWatchPath.LocalPath : null;
 			}			
-			set
-			{
+			set {
 				if(!string.IsNullOrEmpty(value))
-				{
-					string s = value;
-					s = s.TrimEnd(new char[]{'/', '\\'});
-					Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out uriWatchPath);
-				}
+					Uri.TryCreate((value as string).TrimEnd(new char[]{'/', '\\'}), UriKind.RelativeOrAbsolute, out uriWatchPath);
 			}
 		}
 
@@ -133,16 +121,14 @@ namespace mymiroir
 			get {
 				return _Filter;
 			}			
-			set
-			{
+			set {
 				_Filter = value;
 			}
 		}
 
 		public bool IsUnixPlatform
 		{
-			get
-			{
+			get {
 				return (Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX)
 					? true
 					: false;
@@ -151,57 +137,42 @@ namespace mymiroir
 
 		public mymiroir()
 		{
-			//WatchPath = watch_path;
-			//MirrorPath = mirror_path;
 			
-			//init ();
 		}
 
-		/*
-		public mymiroir(string watch_path, string mirror_path)
+		public bool start (bool showconfigheader = false)
 		{
-			WatchPath = watch_path;
-			MirrorPath = mirror_path;
-			
-			init ();
-		}
-		*/
+			if(showconfigheader)
+				Console.WriteLine(this.ToString());
 
-		public void start ()
-		{
-			init ();
-		}
-
-		private void init ()
-		{
-			filePool = new ArrayList();
+			filePool = new ArrayList ();
 				
-			fsw = new FileSystemWatcher();
+			fsw = new FileSystemWatcher ();
 
-			if(Directory.Exists(WatchPath)) 
-			{
+			var suc = (Directory.Exists (WatchPath)) ? true : false;
+
+			if (suc) {
 				fsw.Path = WatchPath;
-			}
-			
-			//Console.WriteLine ("FSW: WatchPath: " + WatchPath);
-			//Console.WriteLine ("FSW: MirrorPath: " + MirrorPath);
-			
-			fsw.Filter = Filter;
 
-			fsw.NotifyFilter = NotifyFilters.LastWrite;
+				fsw.Filter = Filter;
 
-			fsw.IncludeSubdirectories = (Recursive) ? true : false; 
+				fsw.NotifyFilter = NotifyFilters.LastWrite;
+
+				fsw.IncludeSubdirectories = (Recursive) ? true : false; 
 			
-			fsw.Error += new ErrorEventHandler(fsw_OnError);
+				fsw.Error += new ErrorEventHandler (fsw_OnError);
 			
-			//if(IsLinux) fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
-			//else { 
+				//if(IsLinux) fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
+				//else { 
 				//fsw.Created += new FileSystemEventHandler(fsw_OnCreated);
-			//}
+				//}
 
-			fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
+				fsw.Changed += new FileSystemEventHandler (fsw_OnChanged);
 
-			fsw.EnableRaisingEvents = true;
+				fsw.EnableRaisingEvents = true;
+			}
+
+			return suc;
 		}
 		
 		private void fsw_OnError(object sender, ErrorEventArgs e)

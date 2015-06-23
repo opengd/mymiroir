@@ -7,8 +7,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{90E7BDC7-0367-44E8-82A0-6631861B965B}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>mymiroircli</RootNamespace>
-    <AssemblyName>mymiroir-cli</AssemblyName>
+    <RootNamespace>mymiroir</RootNamespace>
+    <AssemblyName>mymiroir</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
