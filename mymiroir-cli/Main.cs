@@ -1,6 +1,8 @@
 using System;
 using mymiroir;
 using System.IO;
+using System.Diagnostics;
+using System.Threading;
 
 namespace mymiroircli
 {
@@ -8,27 +10,93 @@ namespace mymiroircli
 	{
 		public static void Main (string[] args)
 		{
-			if(args.Length < 2) 
-			{
-				//mymiroir.mymiroir mm = new mymiroir.mymiroir();
-				Console.WriteLine ("FSW: NONE");
+			string filter = "*";
+			bool addhash = false;
+			bool addtimestamp = false;
+
+			string watch = null; 
+			string mirror = null;
+
+			var help = false;
+
+			try {
+				for (var i = 0; i < args.Length; i++) {
+					switch (args [i]) {
+					case ("help"):
+						help = true;
+						break;
+					case ("watch"):
+						watch = args [++i];
+						break;
+					case ("mirror"):
+						mirror = args [++i];
+						break;
+					case ("filter"):
+						filter = args [++i];
+						break;
+					case ("hash"):
+						addhash = true;
+						break;
+					case ("timestamp"):
+						addtimestamp = true;
+						break;
+					default:
+						break;
+					}
+				}
+			} catch (Exception e) {
+				Debug.WriteLine (e.Message);
+				help = true;
 			}
-			else 
-			{
-				mymiroir.mymiroir mm = new mymiroir.mymiroir(args[0], args[1]);
+
+			if (!help) {
+
+				var exitEvent = new ManualResetEvent(false);
+
+				Console.CancelKeyPress += (sender, eventArgs) => {
+	                              eventArgs.Cancel = true;
+	                              exitEvent.Set();
+	                          };
+
+				if(string.IsNullOrEmpty(watch))
+					watch = Directory.GetCurrentDirectory();
+
+				//if(string.IsNullOrEmpty(copyto))
+				//	copyto = Directory.GetCurrentDirectory();
+
+				Console.WriteLine ("watch: " + watch);
+				Console.WriteLine ("copyto: " + mirror);
+
+				mymiroir.mymiroir mm = new mymiroir.mymiroir(){
+					WatchPath = watch,
+					MirrorPath = mirror,
+					Filter = filter,
+					AddHash = addhash,
+					AddTimestamp = addtimestamp
+				};
 				mm.NewFile += HandleNewFile;
 				mm.NewFileCopyStart += HandleNewFileCopyStart;
 				mm.NewFileCopyFinish += HandleNewFileCopyFinish;
 				mm.NewFileCompressStart += HandleNewFileCompressStart;
 				mm.NewFileCompressFinish += HandleNewFileCompressFinish;
-				Console.WriteLine ("FSW: " + args[0]);
+
+				mm.start();
+
+				exitEvent.WaitOne();
 			}
-			
-			
-			
-			Console.ReadLine();
-			//while(true){}
-			
+			else
+			{
+				Console.WriteLine("usage: mymiroir-cli [<args>]\n");
+				Console.WriteLine("Arguments are:");
+				Console.WriteLine("\twatch\t\tPath to watch for changes, if not specified current will be used");
+				Console.WriteLine("\tfilter\t\tFilter file types, default is *");
+				Console.WriteLine("\tmirror\t\tMirror path, copy changed file to path");
+				Console.WriteLine("\thash\t\tAdd hash to filename on copy");
+				Console.WriteLine("\ttimestamp\tAdd time now on filename on copy");
+				Console.WriteLine("\texec\t\tExecute on change, parameters: $0 is filename, $1 is fullpath, $2 is hash");
+				Console.WriteLine("\thelp\t\tShow this information");
+				Console.WriteLine("\nExample: mymiroir-cli watch /my/file/path");
+			}
 		}
 
 		static void HandleNewFileCompressFinish (object sender, CompressFileEventArgs e)

@@ -1,8 +1,9 @@
 ﻿<Properties>
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="mymiroir/mymiroir.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="mymiroir-cli/Main.cs">
     <Files>
-      <File FileName="mymiroir/mymiroir.cs" Line="201" Column="19" />
+      <File FileName="mymiroir/mymiroir.cs" Line="98" Column="31" />
+      <File FileName="mymiroir-cli/Main.cs" Line="85" Column="58" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

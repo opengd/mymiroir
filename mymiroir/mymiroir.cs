@@ -4,6 +4,7 @@ using System.IO;
 using System.Collections;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Diagnostics;
 
 namespace mymiroir
 {
@@ -27,37 +28,52 @@ namespace mymiroir
 			this.DestinationFile = DestinationFile;
 		}
 	}
+
+	public enum FileChangeType
+	{
+		New, Deleted, Compress, Copy
+	};
+
+	public class FileChangeEventArgs {
+
+		private string file;
+		private FileChangeType fileChangeType;
+
+		public FileChangeEventArgs(string file, FileChangeType fileChangeType)
+		{
+			this.file = file;
+			this.fileChangeType = fileChangeType;
+		}
+	}
 	
 	public class mymiroir
 	{
-		
 		public delegate void NewFileEventHandler(object sender, FileSystemEventArgs e);
 		public delegate void CopyFileEventHandler(object sender, CopyFileEventArgs e);
 		public delegate void CompressFileEventHandler(object sender, CompressFileEventArgs e);
-		
+		public delegate void FileChangeEventHandler(object sender, FileChangeEventArgs e);
+
 		public event NewFileEventHandler NewFile;
 		public event CopyFileEventHandler NewFileCopyStart;
 		public event CopyFileEventHandler NewFileCopyFinish;
 		public event CompressFileEventHandler NewFileCompressStart;
 		public event CompressFileEventHandler NewFileCompressFinish;
-		
+		public event FileChangeEventHandler FileChange;
+
 		ArrayList filePool;
 		
 		private FileSystemWatcher fsw;
 		
 		private Uri uriMirrorPath;
 		private Uri uriWatchPath;
-		
-		private int maxThreads;
-		
+
 		private bool isLinux;
 		
-		string MirrorPath
+		public string MirrorPath
 		{
 			get {
 				return uriMirrorPath.LocalPath;
 			}
-			
 			set
 			{
 				string s = value;
@@ -66,18 +82,39 @@ namespace mymiroir
 			}
 		}
 		
-		string WatchPath
+		public string WatchPath
 		{
 			get {
 				return uriWatchPath.LocalPath;
-			}
-			
+			}			
 			set
 			{
 				string s = value;
 				s = s.TrimEnd(new char[]{'/', '\\'});
 				uriWatchPath = new Uri(s);
-				//init ();
+			}
+		}
+
+		public bool AddHash
+		{
+			get;set;
+		}
+
+		public bool AddTimestamp
+		{
+			get;set;
+		}
+
+		private string _Filter = "*";
+
+		public string Filter
+		{
+			get {
+				return _Filter;
+			}			
+			set
+			{
+				_Filter = value;
 			}
 		}
 		
@@ -92,26 +129,31 @@ namespace mymiroir
 				isLinux = value;
 			}
 		}
-		
-		public mymiroir ()
-		{			
-			init ();
-		}
-		
-		public mymiroir(string watch_path)
+
+		public mymiroir()
 		{
-			init ();
+			//WatchPath = watch_path;
+			//MirrorPath = mirror_path;
+			
+			//init ();
 		}
-		
+
+		/*
 		public mymiroir(string watch_path, string mirror_path)
 		{
-			WatchPath = watch_path ;
+			WatchPath = watch_path;
 			MirrorPath = mirror_path;
 			
 			init ();
 		}
-		
-		public void init ()
+		*/
+
+		public void start ()
+		{
+			init ();
+		}
+
+		private void init ()
 		{
 			filePool = new ArrayList();
 			
@@ -137,27 +179,25 @@ namespace mymiroir
 			Console.WriteLine ("FSW: WatchPath: " + WatchPath);
 			Console.WriteLine ("FSW: MirrorPath: " + MirrorPath);
 			
-			fsw.Filter = "*.*";
-			if(IsLinux) fsw.NotifyFilter = NotifyFilters.LastWrite;
-			else
-			{
-				fsw.NotifyFilter = NotifyFilters.LastWrite;
-			}
+			fsw.Filter = Filter;
+
+			fsw.NotifyFilter = NotifyFilters.LastWrite;
 			
 			fsw.Error += new ErrorEventHandler(fsw_OnError);
 			
-			if(IsLinux) fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
-			else { 
+			//if(IsLinux) fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
+			//else { 
 				//fsw.Created += new FileSystemEventHandler(fsw_OnCreated);
-				fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
-			}
-			
+			//}
+
+			fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
+
 			fsw.EnableRaisingEvents = true;
 		}
 		
 		private void fsw_OnError(object sender, ErrorEventArgs e)
 		{
-			Console.WriteLine ("FSW: Error: " + e.GetException());
+			Debug.WriteLine ("FSW: Error: " + e.GetException());
 		}
 		
 		private void fsw_OnCreated(object sender, FileSystemEventArgs e)
@@ -178,13 +218,11 @@ namespace mymiroir
 			FileSystemEventArgs e = (FileSystemEventArgs)arguments;
 			
 			string newMirrorFile;
-			Console.WriteLine (e.ChangeType.ToString());
+			Debug.WriteLine (e.ChangeType.ToString());
 			
 			if(!checkFilePool(e.FullPath))
 			{
 				filePool.Add(e.FullPath);	
-
-				var time = DateTime.Now;
 
 				var pathEnd = (IsLinux) ? "/" : "\\";
 
@@ -193,12 +231,8 @@ namespace mymiroir
 					e.Name + 
 					"." + 
 					GetHash(e.FullPath) + 
-					"." + 
-					time.ToShortDateString() + 
-					"." + 
-					time.ToLongTimeString() + 
-					"." + 
-					time.Millisecond;
+						GetFormatedTime();
+
 				
 				if(IsFileReady(e.FullPath)) 
 				{
@@ -248,13 +282,14 @@ namespace mymiroir
 					f.Close();
 					break;
 				}
-				catch (IOException)
+				catch (Exception e)
 				{
+					Debug.WriteLine(e.Message);
 				//	Console.WriteLine ("FSW: IsFileReady: EXCEPTION");
 				}
 			}
 			
-			Console.WriteLine ("FSW: IsFileReady: " + inFile);
+			Debug.WriteLine ("FSW: IsFileReady: " + inFile);
 			
 			return true;
 		}
@@ -303,8 +338,16 @@ namespace mymiroir
 		
 		private void StepRemoveFile(string inFile)
 		{
-			File.Delete(inFile);
-			Console.WriteLine ("FSW: Step Deleted: " + inFile);
+			try
+			{
+				File.Delete(inFile);
+			}
+			catch (Exception e)
+			{
+				Debug.WriteLine(e.Message);
+			}
+
+			Debug.WriteLine ("FSW: Step Deleted: " + inFile);
 		}
 
 		private string GetHash(string file)
@@ -315,8 +358,19 @@ namespace mymiroir
 				byte[] checksum = hasher.ComputeHash(stream);
 				return BitConverter.ToString(checksum);
 			}
-			return null;
 		}
+
+		private string GetFormatedTime()
+		{
+			var time = DateTime.Now;
+			return 	"." + 
+					time.ToShortDateString() + 
+					"." + 
+					time.ToLongTimeString() + 
+					"." + 
+					time.Millisecond;
+		}
+
 	}
 	
 }
