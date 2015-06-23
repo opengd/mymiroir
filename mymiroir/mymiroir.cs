@@ -31,13 +31,13 @@ namespace mymiroir
 
 	public enum FileChangeType
 	{
-		New, Deleted, Compress, Copy
+		New, Deleted, Compress, Copy, Change
 	};
 
 	public class FileChangeEventArgs {
 
-		private string file;
-		private FileChangeType fileChangeType;
+		public string file;
+		public FileChangeType fileChangeType;
 
 		public FileChangeEventArgs(string file, FileChangeType fileChangeType)
 		{
@@ -72,37 +72,53 @@ namespace mymiroir
 		public string MirrorPath
 		{
 			get {
-				return uriMirrorPath.LocalPath;
+				return (uriMirrorPath != null) ? uriMirrorPath.LocalPath : null;
 			}
 			set
 			{
-				string s = value;
-				s = s.TrimEnd(new char[]{'/', '\\'});
-				uriMirrorPath = new Uri(s);
+				if(!string.IsNullOrEmpty(value))
+				{
+					string s = value;
+					s = s.TrimEnd(new char[]{'/', '\\'});
+					Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out uriMirrorPath);
+				}
 			}
 		}
 		
 		public string WatchPath
 		{
 			get {
-				return uriWatchPath.LocalPath;
+				return (uriWatchPath != null) ? uriWatchPath.LocalPath : null;
 			}			
 			set
 			{
-				string s = value;
-				s = s.TrimEnd(new char[]{'/', '\\'});
-				uriWatchPath = new Uri(s);
+				if(!string.IsNullOrEmpty(value))
+				{
+					string s = value;
+					s = s.TrimEnd(new char[]{'/', '\\'});
+					Uri.TryCreate(s, UriKind.RelativeOrAbsolute, out uriWatchPath);
+				}
 			}
 		}
 
-		public bool AddHash
-		{
-			get;set;
+		public string Exec {
+			get;
+			set;
 		}
 
-		public bool AddTimestamp
-		{
-			get;set;
+		public bool AddHash {
+			get;
+			set;
+		}
+
+		public bool AddTimestamp {
+			get;
+			set;
+		}
+
+		public bool Compress {
+			get;
+			set;
 		}
 
 		private string _Filter = "*";
@@ -215,43 +231,89 @@ namespace mymiroir
 				
 		private void OnNewFile(object arguments)
 		{
-			FileSystemEventArgs e = (FileSystemEventArgs)arguments;
+			var e = arguments as FileSystemEventArgs;
 			
 			string newMirrorFile;
 			Debug.WriteLine (e.ChangeType.ToString());
-			
+
 			if(!checkFilePool(e.FullPath))
 			{
-				filePool.Add(e.FullPath);	
+				filePool.Add(e.FullPath);
 
-				var pathEnd = (IsLinux) ? "/" : "\\";
+				if(FileChange != null) FileChange(this, new FileChangeEventArgs(e.FullPath, FileChangeType.Change));
 
-				newMirrorFile = MirrorPath + 
-					pathEnd + 
-					e.Name + 
-					"." + 
-					GetHash(e.FullPath) + 
-						GetFormatedTime();
+				string hash = null;
+				string timestamp = null;
 
-				
-				if(IsFileReady(e.FullPath)) 
+				if(Exec != null)
 				{
-					if (NewFile != null) NewFile(this, e);
+					string exec = Exec;
+
+					exec = exec.Replace("$0", e.Name);
+
+					exec = exec.Replace("$1", e.FullPath);
+
+					if(Exec.Contains("$2"))
+					{
+						hash = GetHash(e.FullPath);
+						exec = Exec.Replace("$2", hash);
+					}
+
+					if(Exec.Contains("$3"))
+					{
+						timestamp = GetTimestamp();
+						exec = exec.Replace("$3", timestamp);
+					}
+
+					exec = exec.Trim(new char[]{'"'});
+
+					Console.WriteLine(exec);
+
+					Process.Start(exec);
+				}
+
+				if(MirrorPath != null)
+				{
+					var pathEnd = (IsLinux) ? "/" : "\\";
+
+					string ifhash = string.Empty;
+					string iftimestamp = string.Empty;
+
+					if(AddHash)
+						ifhash = (string.IsNullOrEmpty(hash)) ? "." + GetHash(e.FullPath) : "." + hash;
+
+					if(AddTimestamp)
+						iftimestamp = (string.IsNullOrEmpty(timestamp)) ? "." + GetTimestamp() : "." + timestamp; 
+
+					newMirrorFile = MirrorPath + 
+						pathEnd + 
+						e.Name + 
+						ifhash + 
+						iftimestamp;
+
 					
-					if(NewFileCopyStart != null) NewFileCopyStart(this, new CopyFileEventArgs(e.FullPath, newMirrorFile));
-					
-					StepCopyFile(e.FullPath, newMirrorFile);
-					
-					if(NewFileCopyFinish != null) NewFileCopyFinish(this, new CopyFileEventArgs(e.FullPath, newMirrorFile));
-					
-					//fi1 = new FileInfo(newMirrorFile);
-					//Console.WriteLine ("FSW: FileInfo: Mirror: " + fi1.Length);
-					
-					if(NewFileCompressStart != null) NewFileCompressStart(this, new CompressFileEventArgs(newMirrorFile, newMirrorFile + ".gz"));
-					
-					StepCompressFile(newMirrorFile);
-					
-					if(NewFileCompressFinish != null) NewFileCompressFinish(this, new CompressFileEventArgs(newMirrorFile, newMirrorFile + ".gz"));
+					if(IsFileReady(e.FullPath)) 
+					{
+						if (NewFile != null) NewFile(this, e);
+						
+						if(NewFileCopyStart != null) NewFileCopyStart(this, new CopyFileEventArgs(e.FullPath, newMirrorFile));
+						
+						StepCopyFile(e.FullPath, newMirrorFile);
+						
+						if(NewFileCopyFinish != null) NewFileCopyFinish(this, new CopyFileEventArgs(e.FullPath, newMirrorFile));
+						
+						//fi1 = new FileInfo(newMirrorFile);
+						//Console.WriteLine ("FSW: FileInfo: Mirror: " + fi1.Length);
+
+						if(Compress)
+						{
+							if(NewFileCompressStart != null) NewFileCompressStart(this, new CompressFileEventArgs(newMirrorFile, newMirrorFile + ".gz"));
+						
+							StepCompressFile(newMirrorFile);
+						
+							if(NewFileCompressFinish != null) NewFileCompressFinish(this, new CompressFileEventArgs(newMirrorFile, newMirrorFile + ".gz"));
+						}
+					}
 				}
 				filePool.Remove(e.FullPath);
 			}
@@ -261,6 +323,9 @@ namespace mymiroir
 		
 		private bool checkFilePool(string filename)
 		{
+			if(filename == null) 
+				return true;
+
 			foreach(string s in filePool)
 			{
 				//Console.WriteLine ("FSW: CheckFilePool: " + s);
@@ -360,11 +425,10 @@ namespace mymiroir
 			}
 		}
 
-		private string GetFormatedTime()
+		private string GetTimestamp()
 		{
 			var time = DateTime.Now;
-			return 	"." + 
-					time.ToShortDateString() + 
+			return 	time.ToShortDateString() + 
 					"." + 
 					time.ToLongTimeString() + 
 					"." + 

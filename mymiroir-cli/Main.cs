@@ -13,9 +13,12 @@ namespace mymiroircli
 			string filter = "*";
 			bool addhash = false;
 			bool addtimestamp = false;
+			bool compress = false;
 
 			string watch = null; 
 			string mirror = null;
+
+			string exec = null;
 
 			var help = false;
 
@@ -39,6 +42,12 @@ namespace mymiroircli
 						break;
 					case ("timestamp"):
 						addtimestamp = true;
+						break;
+					case ("exec"):
+						exec = args [++i];
+						break;
+					case ("compress"):
+						compress = true;
 						break;
 					default:
 						break;
@@ -72,14 +81,16 @@ namespace mymiroircli
 					MirrorPath = mirror,
 					Filter = filter,
 					AddHash = addhash,
-					AddTimestamp = addtimestamp
+					AddTimestamp = addtimestamp,
+					Compress = compress,
+					Exec = exec
 				};
 				mm.NewFile += HandleNewFile;
 				mm.NewFileCopyStart += HandleNewFileCopyStart;
 				mm.NewFileCopyFinish += HandleNewFileCopyFinish;
 				mm.NewFileCompressStart += HandleNewFileCompressStart;
 				mm.NewFileCompressFinish += HandleNewFileCompressFinish;
-
+				mm.FileChange += HandleFileChange;
 				mm.start();
 
 				exitEvent.WaitOne();
@@ -93,10 +104,16 @@ namespace mymiroircli
 				Console.WriteLine("\tmirror\t\tMirror path, copy changed file to path");
 				Console.WriteLine("\thash\t\tAdd hash to filename on copy");
 				Console.WriteLine("\ttimestamp\tAdd time now on filename on copy");
-				Console.WriteLine("\texec\t\tExecute on change, parameters: $0 is filename, $1 is fullpath, $2 is hash");
+				Console.WriteLine("\tcompress\tCompress mirror file");
+				Console.WriteLine("\texec\t\tExecute on change, parameters: $0 is filename, $1 is fullpath, $2 is hash, $3 timestamp");
 				Console.WriteLine("\thelp\t\tShow this information");
 				Console.WriteLine("\nExample: mymiroir-cli watch /my/file/path");
 			}
+		}
+
+		static void HandleFileChange (object sender, FileChangeEventArgs e)
+		{
+			Console.WriteLine(e.file);
 		}
 
 		static void HandleNewFileCompressFinish (object sender, CompressFileEventArgs e)
