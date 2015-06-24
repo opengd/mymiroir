@@ -114,6 +114,11 @@ namespace mymiroir
 			set;
 		}
 
+		public bool Ignore {
+			get;
+			set;
+		}
+
 		private string _Filter = "*";
 
 		public string Filter
@@ -149,7 +154,7 @@ namespace mymiroir
 				
 			fsw = new FileSystemWatcher ();
 
-			var suc = (Directory.Exists (WatchPath)) ? true : false;
+			var suc = (Ignore || Directory.Exists (WatchPath)) ? true : false;
 
 			if (suc) {
 				fsw.Path = WatchPath;
@@ -161,11 +166,6 @@ namespace mymiroir
 				fsw.IncludeSubdirectories = (Recursive) ? true : false; 
 			
 				fsw.Error += new ErrorEventHandler (fsw_OnError);
-			
-				//if(IsLinux) fsw.Changed += new FileSystemEventHandler(fsw_OnChanged);
-				//else { 
-				//fsw.Created += new FileSystemEventHandler(fsw_OnCreated);
-				//}
 
 				fsw.Changed += new FileSystemEventHandler (fsw_OnChanged);
 
@@ -398,7 +398,7 @@ namespace mymiroir
 					time.Millisecond;
 		}
 
-		public string ToString ()
+		public override string ToString ()
 		{
 			var ret = string.Empty;
 
@@ -410,6 +410,7 @@ namespace mymiroir
 			ret += "Compress: " + Compress + "\n";
 			ret += "Hash: " + AddHash + "\n";
 			ret += "Timestamp: " + AddTimestamp + "\n";
+			ret += "Ignore: " + Ignore + "\n";
 
 			return ret;
 		}
