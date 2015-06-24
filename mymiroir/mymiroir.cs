@@ -1,4 +1,4 @@
-/* ============================================================
+/*
 * mymiroir 
 * Copyright (C) 2015 Erik Johansson
 *
@@ -14,7 +14,7 @@
 *
 * You should have received a copy of the GNU General Public License
 * along with this program.  If not, see <http://www.gnu.org/licenses/>.
-* ============================================================ */
+*/
 
 using System;
 using System.Threading;
@@ -26,27 +26,6 @@ using System.Diagnostics;
 
 namespace mymiroir
 {
-	public class CopyFileEventArgs
-	{
-		public string SourceFile;
-		public string DestinationFile;
-		
-		public CopyFileEventArgs(string SourceFile = "", string DestinationFile = "")
-		{
-			this.SourceFile = SourceFile;
-			this.DestinationFile = DestinationFile;
-		}	
-	}
-	
-	public class CompressFileEventArgs : CopyFileEventArgs {
-		
-		public CompressFileEventArgs(string SourceFile = "", string DestinationFile = "")
-		{
-			this.SourceFile = SourceFile;
-			this.DestinationFile = DestinationFile;
-		}
-	}
-
 	public class FileChangeEventArgs {
 
 		public FileSystemEventArgs file;
@@ -62,23 +41,15 @@ namespace mymiroir
 	
 	public class mymiroir
 	{
-		//public delegate void NewFileEventHandler(object sender, FileSystemEventArgs e);
-		//public delegate void CopyFileEventHandler(object sender, CopyFileEventArgs e);
-		//public delegate void CompressFileEventHandler(object sender, CompressFileEventArgs e);
 		public delegate void FileChangeEventHandler(object sender, FileChangeEventArgs e);
 
-		/*
-		public event NewFileEventHandler NewFile;
-		public event CopyFileEventHandler NewFileCopyStart;
-		public event CopyFileEventHandler NewFileCopyFinish;
-		public event CompressFileEventHandler NewFileCompressStart;
-		public event CompressFileEventHandler NewFileCompressFinish;
-		*/
 		public event FileChangeEventHandler FileChange;
 
 		ArrayList filePool;
 		
 		private FileSystemWatcher fsw;
+
+		object changed_lock = new object();
 		
 		private Uri uriMirrorPath;
 		public string MirrorPath
@@ -135,6 +106,11 @@ namespace mymiroir
 		}
 
 		public bool Remove {
+			get;
+			set;
+		}
+
+		public bool Verbose {
 			get;
 			set;
 		}
@@ -199,13 +175,7 @@ namespace mymiroir
 		
 		private void fsw_OnError(object sender, ErrorEventArgs e)
 		{
-			Debug.WriteLine ("FSW: Error: " + e.GetException());
-		}
-		
-		private void fsw_OnCreated(object sender, FileSystemEventArgs e)
-		{
-			Thread t = new Thread(OnNewFile);
-			t.Start(e);
+			Console.WriteLine ("mymiroir: Error: " + e.GetException().Message);
 		}
 		
 		private void fsw_OnChanged(object sender, FileSystemEventArgs e)
@@ -213,8 +183,6 @@ namespace mymiroir
 			Thread t = new Thread(OnNewFile);
 			t.Start(e);
 		}
-
-		object changed_lock = new object();
 
 		private void OnNewFile (object arguments)
 		{
@@ -229,7 +197,6 @@ namespace mymiroir
 			}
 
 			string newMirrorFile;
-			//Console.WriteLine (e.ChangeType.ToString());
 
 			string hash = (Hash) ? GetHash(e.FullPath) : null;
 			string timestamp = (Timestamp) ? GetTimestamp() : null;
@@ -254,9 +221,13 @@ namespace mymiroir
 
 				exec = exec.Trim(new char[]{'"'});
 
-				Console.WriteLine(exec);
+				if(Verbose) 
+					Console.WriteLine("Exec: Start: " + exec);
 
 				Process.Start(exec);
+
+				if(Verbose) 
+					Console.WriteLine("Exec: Finish: " + exec);
 			}
 
 			if(MirrorPath != null) {
@@ -297,34 +268,32 @@ namespace mymiroir
 				
 				if(IsFileReady(e.FullPath)) 
 				{
-					//if (NewFile != null) 
-					//	NewFile(this, e);
-					
-					//if(NewFileCopyStart != null) 
-					//	NewFileCopyStart(this, new CopyFileEventArgs(e.FullPath, newMirrorFile));
+					if(Verbose) 
+						Console.WriteLine("MirrorFile: Start: " + newMirrorFile);
 
-					File.Copy(e.FullPath, newMirrorFile);
+					bool suc_mirror = true;
 
-					//if(NewFileCopyFinish != null) 
-					//	NewFileCopyFinish(this, new CopyFileEventArgs(e.FullPath, newMirrorFile));
-					
-					//fi1 = new FileInfo(newMirrorFile);
-					//Console.WriteLine ("FSW: FileInfo: Mirror: " + fi1.Length);
+					try {
+						File.Copy(e.FullPath, newMirrorFile);
 
-					if(Compress) {
-						//if(NewFileCompressStart != null) 
-						//	NewFileCompressStart(this, new CompressFileEventArgs(newMirrorFile, newMirrorFile + ".gz"));
-					
-						StepCompressFile(newMirrorFile);
-					
-						//if(NewFileCompressFinish != null) 
-						//	NewFileCompressFinish(this, new CompressFileEventArgs(newMirrorFile, newMirrorFile + ".gz"));
+						if(Verbose) 
+							Console.WriteLine("MirrorFile: Finish: " + newMirrorFile);
+					}
+					catch (Exception ex) {
+						suc_mirror = false;
+
+						if(Verbose) 
+							Console.WriteLine("MirrorFile: Exception: " + ex.Message);
+					}
+
+					if(suc_mirror && Compress) {
+						CompressFile(newMirrorFile);
 					}
 				}
 			}
 
 			if (Remove)
-				StepRemoveFile(e.FullPath);
+				RemoveFile(e.FullPath);
 
 			filePool.Remove(e.FullPath);
 		}
@@ -341,44 +310,45 @@ namespace mymiroir
 					break;
 				}
 				catch (Exception e) {
-					Debug.WriteLine(e.Message);
-				//	Console.WriteLine ("FSW: IsFileReady: EXCEPTION");
+					if(Verbose)
+						Console.WriteLine("IsFileReady: Exception: " + e.Message);
 				}
 			}
-			
-			Debug.WriteLine ("FSW: IsFileReady: " + inFile);
-			
+
 			return true;
 		}
 		
-		private void StepCompressFile(string inFile)
+		private void CompressFile(string inFile)
 		{
 			using ( FileStream iFile = File.OpenRead(inFile) ) {
 				using ( FileStream oFile = File.Create(inFile + ".gz") ) {
+
+					if(Verbose)
+						Console.WriteLine("Compress: Start: " + oFile.Name);
+
 					using (GZipStream Compress = new GZipStream(oFile, CompressionMode.Compress)) {
 						iFile.CopyTo(Compress);
-					
-						Compress.Close();				
 					}
-					//Console.WriteLine ("FSW: Step Compress: " + oFile.Name);
-					oFile.Close();
+
+					if(Verbose)
+						Console.WriteLine("Compress: Finish: " + oFile.Name);
 				}
-				iFile.Close();
 			}
 		}
 		
-		private void StepRemoveFile(string inFile)
+		private void RemoveFile(string inFile)
 		{
-			try
-			{
-				File.Delete(inFile);
-			}
-			catch (Exception e)
-			{
-				Debug.WriteLine(e.Message);
-			}
+			if(Verbose)
+				Console.WriteLine ("Remove: Start: " + inFile);
 
-			Debug.WriteLine ("FSW: Step Deleted: " + inFile);
+			try {
+				File.Delete(inFile);
+				if(Verbose)
+					Console.WriteLine ("Remove: Finish: " + inFile);
+			}
+			catch (Exception e) {
+				Console.WriteLine("Remove: Exception: " + e.Message);
+			}
 		}
 
 		private string GetHash(string file)
@@ -415,6 +385,8 @@ namespace mymiroir
 			ret += "Timestamp: " + Timestamp + "\n";
 			ret += "Ignore: " + Ignore + "\n";
 			ret += "Remove: " + Remove + "\n";
+			ret += "Verbose: " + Verbose + "\n";
+			ret += "MirrorFile: " + MirrorFile + "\n";
 
 			return ret;
 		}

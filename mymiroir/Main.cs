@@ -35,6 +35,7 @@ namespace mymiroir
 			bool header = false;
 			bool ignore = false;
 			bool remove = false;
+			bool verbose = false;
 
 			string watch = null; 
 			string mirror = null;
@@ -86,6 +87,9 @@ namespace mymiroir
 					case ("remove"):
 						remove = true;
 						break;
+					case ("verbose"):
+						verbose = true;
+						break;
 					default:
 						break;
 					}
@@ -118,14 +122,10 @@ namespace mymiroir
 					Recursive = recursive,
 					Ignore = ignore,
 					Remove = remove,
-					MirrorFile = mirrorfile
+					MirrorFile = mirrorfile,
+					Verbose = verbose
 				};
 
-				mm.NewFile += HandleNewFile;
-				mm.NewFileCopyStart += HandleNewFileCopyStart;
-				mm.NewFileCopyFinish += HandleNewFileCopyFinish;
-				mm.NewFileCompressStart += HandleNewFileCompressStart;
-				mm.NewFileCompressFinish += HandleNewFileCompressFinish;
 				mm.FileChange += HandleFileChange;
 
 				bool suc = mm.start(header);
@@ -157,6 +157,7 @@ namespace mymiroir
 				Console.WriteLine("   recursive\tRecursive, watch all subfolders");
 				Console.WriteLine("   remove\tRemove changed file");
 				Console.WriteLine("   timestamp\tOutput current timestamp");
+				Console.WriteLine("   verbose\tVerbose output");
 				Console.WriteLine("   watch\tPath to watch for changes, if not specified current will be used");
 
 				Console.WriteLine("\nExample: mymiroir watch /my/file/path");
@@ -174,37 +175,9 @@ namespace mymiroir
 
 			if(e.timestamp != null)
 				Console.WriteLine(e.timestamp);
-		}
 
-		static void HandleNewFileCompressFinish (object sender, CompressFileEventArgs e)
-		{
-			Console.WriteLine ("FSW: NewFile: Compress: Finish: Source: " + e.SourceFile);
-			Console.WriteLine ("FSW: NewFile: Compress: Finish: Destination: " + e.DestinationFile);			
-		}
-
-		static void HandleNewFileCompressStart (object sender, CompressFileEventArgs e)
-		{
-			Console.WriteLine ("FSW: NewFile: Compress: Start: Source: " + e.SourceFile);
-			Console.WriteLine ("FSW: NewFile: Compress: Start: Destination: " + e.DestinationFile);
-		}
-
-		static void HandleNewFileCopyFinish (object sender, CopyFileEventArgs e)
-		{
-			Console.WriteLine ("FSW: NewFile: MirrorCopy: Finish: Source: " + e.SourceFile);
-			Console.WriteLine ("FSW: NewFile: MirrorCopy: Finish: Destination: " + e.DestinationFile);
-		}
-
-		static void HandleNewFileCopyStart (object sender, CopyFileEventArgs e)
-		{
-			Console.WriteLine ("FSW: NewFile: MirrorCopy: Start: Source: " + e.SourceFile);
-			Console.WriteLine ("FSW: NewFile: MirrorCopy: Start: Destination: " + e.DestinationFile);
-		}
-
-		static void HandleNewFile (object sender, FileSystemEventArgs e)
-		{
-			Console.WriteLine ("FSW: NewFile: " + e.FullPath);
-			FileInfo fi1 = new FileInfo(e.FullPath);
-			Console.WriteLine ("FSW: NewFile: FileSize: " + fi1.Length);
+			//FileInfo fi1 = new FileInfo(e.FullPath);
+			//Console.WriteLine ("FSW: NewFile: FileSize: " + fi1.Length);
 		}
 	}
 }
