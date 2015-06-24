@@ -1,3 +1,21 @@
+/*
+* mymiroir 
+* Copyright (C) 2015 Erik Johansson
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 using System;
 using System.IO;
 using System.Diagnostics;
@@ -10,15 +28,17 @@ namespace mymiroir
 		public static void Main (string[] args)
 		{
 			string filter = "*";
-			bool addhash = false;
-			bool addtimestamp = false;
+			bool hash = false;
+			bool timestamp = false;
 			bool compress = false;
 			bool recursive = false;
 			bool header = false;
 			bool ignore = false;
+			bool remove = false;
 
 			string watch = null; 
 			string mirror = null;
+			string mirrorfile = null;
 
 			string exec = null;
 
@@ -36,14 +56,17 @@ namespace mymiroir
 					case ("mirror"):
 						mirror = args [++i];
 						break;
+					case ("mirrorfile"):
+						mirrorfile = args [++i];
+						break;
 					case ("filter"):
 						filter = args [++i];
 						break;
 					case ("hash"):
-						addhash = true;
+						hash = true;
 						break;
 					case ("timestamp"):
-						addtimestamp = true;
+						timestamp = true;
 						break;
 					case ("exec"):
 						exec = args [++i];
@@ -59,6 +82,9 @@ namespace mymiroir
 						break;
 					case ("ignore"):
 						ignore = true;
+						break;
+					case ("remove"):
+						remove = true;
 						break;
 					default:
 						break;
@@ -85,12 +111,14 @@ namespace mymiroir
 					WatchPath = watch,
 					MirrorPath = mirror,
 					Filter = filter,
-					AddHash = addhash,
-					AddTimestamp = addtimestamp,
+					Hash = hash,
+					Timestamp = timestamp,
 					Compress = compress,
 					Exec = exec,
 					Recursive = recursive,
-					Ignore = ignore
+					Ignore = ignore,
+					Remove = remove,
+					MirrorFile = mirrorfile
 				};
 
 				mm.NewFile += HandleNewFile;
@@ -118,26 +146,34 @@ namespace mymiroir
 
 				Console.WriteLine("Arguments are:");
 				Console.WriteLine("   compress\tCompress mirror file");
-				Console.WriteLine("   exec\t\tExecute on change, parameters: $0 is filename, $1 is fullpath, $2 is hash, $3 timestamp");
+				Console.WriteLine("   exec\t\tExecute on change, parameters: %0 filename, %1 hash, %2 timestamp, %3 fullpath");
 				Console.WriteLine("   filter\tFilter file types, default is *");
-				Console.WriteLine("   hash\t\tAdd hash to filename on copy");
+				Console.WriteLine("   hash\t\tOutput MD5 hash for file");
 				Console.WriteLine("   header\tShow config header on start");
 				Console.WriteLine("   help\t\tShow this information");
 				Console.WriteLine("   ignore\tIgnore check if the specified watch path exist or not");
 				Console.WriteLine("   mirror\tMirror path, copy changed file to path");
+				Console.WriteLine("   mirrorfile\tFilename for new mirror file, default is \"%0.%1.%2\", parameters: %0 filename, %1 hash, %2 timestamp");
 				Console.WriteLine("   recursive\tRecursive, watch all subfolders");
-				Console.WriteLine("   timestamp\tAdd time now on filename on copy");
+				Console.WriteLine("   remove\tRemove changed file");
+				Console.WriteLine("   timestamp\tOutput current timestamp");
 				Console.WriteLine("   watch\tPath to watch for changes, if not specified current will be used");
 
 				Console.WriteLine("\nExample: mymiroir watch /my/file/path");
-				Console.WriteLine("         mymiroir watch /my/file/path exec \"/run/my/script.sh $0\"");
+				Console.WriteLine("         mymiroir watch /my/file/path exec \"/run/my/script.sh %0\"");
 				Console.WriteLine("\nRun as service: mono-service mymiroir.exe");
 			}
 		}
 
 		static void HandleFileChange (object sender, FileChangeEventArgs e)
 		{
-			Console.WriteLine(e.file);
+			Console.WriteLine(e.file.FullPath);
+
+			if(e.hash != null)
+				Console.WriteLine(e.hash);
+
+			if(e.timestamp != null)
+				Console.WriteLine(e.timestamp);
 		}
 
 		static void HandleNewFileCompressFinish (object sender, CompressFileEventArgs e)
